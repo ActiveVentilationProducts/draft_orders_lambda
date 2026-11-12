@@ -112,7 +112,24 @@ export async function graphql(query, variables = {}) {
   return graphqlPayload.data;
 }
 
+/** Shopify rejected the email itself (e.g. "Email contains an invalid domain name"). The customer should fix it. */
+export class InvalidEmailError extends Error {
+  constructor(details) {
+    super('Shopify rejected the email address');
+    this.name = 'InvalidEmailError';
+    this.details = details;
+  }
+}
+
+export function isEmailFieldError(userError) {
+  return userError.field?.includes('email') ?? false;
+}
+
+/** Throws InvalidEmailError if any userError is about the email field, otherwise ShopifyError. */
 export function assertNoUserErrors(userErrors, operationName) {
+  if (userErrors?.some(isEmailFieldError)) {
+    throw new InvalidEmailError(userErrors);
+  }
   if (userErrors?.length) {
     throw new ShopifyError(`${operationName} returned userErrors`, userErrors);
   }

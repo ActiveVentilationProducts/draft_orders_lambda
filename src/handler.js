@@ -3,6 +3,7 @@
 
 import { validateRequest, ValidationError } from './validation.js';
 import { findOrCreateCustomer } from './customer.js';
+import { InvalidEmailError } from './shopify-client.js';
 import { createDraftOrder } from './draft-order.js';
 import { buildEmail } from './email-template.js';
 import { sendConfirmation } from './mailer.js';
@@ -83,6 +84,10 @@ export async function handler(event) {
     draftOrder = await createDraftOrder({ customerId, contact, cartItems });
     console.log(`Created draft order ${draftOrder.name} (${draftOrder.id})`);
   } catch (error) {
+    if (error instanceof InvalidEmailError) {
+      console.warn(`Invalid email rejected by Shopify: ${contact.email}`, JSON.stringify(error.details));
+      return jsonResponse(400, { ok: false, code: 'invalid_email', error: 'Email address is not valid' }, corsHeaders);
+    }
     console.error('Shopify error', error.message, JSON.stringify(error.details ?? null));
     return jsonResponse(502, { ok: false, error: 'Could not create your quote. Please try again or contact us.' }, corsHeaders);
   }

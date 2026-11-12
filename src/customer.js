@@ -1,4 +1,4 @@
-import { graphql, ShopifyError } from './shopify-client.js';
+import { graphql, ShopifyError, InvalidEmailError, isEmailFieldError } from './shopify-client.js';
 
 const FIND_CUSTOMER_QUERY = `
   query FindCustomerByEmail($searchQuery: String!) {
@@ -39,6 +39,8 @@ export async function findOrCreateCustomer({ email, firstName, lastName }) {
     if (emailIsTaken) {
       const retriedCustomerId = await findCustomerIdByEmail(email);
       if (retriedCustomerId) return retriedCustomerId;
+    } else if (userErrors.some(isEmailFieldError)) {
+      throw new InvalidEmailError(userErrors);
     }
     throw new ShopifyError('customerCreate returned userErrors', userErrors);
   }
